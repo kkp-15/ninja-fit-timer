@@ -1,209 +1,183 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>筋トレ＆ダイエットタイマー｜ハンズフリー対応インターバル</title>
-
-  <!-- SEO -->
-  <meta name="description" content="筋トレ・HIIT・有酸素運動に使える『筋トレ＆ダイエットタイマー』。ハンズフリー操作、音声ガイド、スリープ防止で“痩せるトレ”を楽に継続。" />
-  <meta name="keywords" content="インターバル,筋トレ,ダイエット,HIIT,有酸素,タイマー,ハンズフリー,脂肪燃焼" />
-
-  <!-- OGP -->
-  <meta property="og:title" content="筋トレ＆ダイエットタイマー｜ハンズフリー対応インターバル" />
-  <meta property="og:description" content="筋トレ/ダイエット/HIIT対応。音声操作・スワイプ操作・スリープ防止対応のインターバルタイマー。" />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://fit.kkpwebninja.com/" />
-  <meta property="og:image" content="https://fit.kkpwebninja.com/image/card.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://fit.kkpwebninja.com/" />
-  <link rel="icon" href="favicon.ico" />
-
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2LM85GJN0L"></script>
-  <script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-2LM85GJN0L');</script>
-
-  <style>
-    :root{--fg:#111;--muted:#666;--accent:#0a84ff;--bg:#fff;--card:#f6f7f8}
-    @media (prefers-color-scheme: dark){:root{--fg:#eee;--muted:#aaa;--accent:#4da3ff;--bg:#121212;--card:#1e1e1e}}
-    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;margin:0;background:var(--bg);color:var(--fg);min-height:100dvh;display:grid;place-items:center;padding:16px}
-    .app{width:min(680px,100%);background:var(--card);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden}
-    header,footer{padding:12px 16px}header h1{margin:0;font-size:20px}header p{margin:6px 0 0;color:var(--muted);font-size:13px}
-    main{padding:16px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    input{width:100%;padding:12px 10px;font-size:18px;border-radius:12px;background:#fff0;color:var(--fg);border:1px solid #0000;outline:1px solid #0003}
-    .big{font-size:80px;font-weight:800;text-align:center;margin:8px 0}.phase{font-size:14px;color:var(--muted);text-align:center;margin-top:-6px}
-    .rounds{font-size:14px;text-align:center;margin:8px 0 14px}.row{display:flex;gap:10px;justify-content:center;margin:10px 0 4px}
-    button{flex:1;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;border:none}
-    .start{background:var(--accent);color:#fff}.pause{background:#ffd60a}.reset{background:#e5e5ea}.secondary{background:#dfe2e6}
-    .switches{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;background:#e9ecef;font-size:14px}
-    .chip input{width:auto;accent-color:var(--accent)}.tapzone{margin-top:10px;border-radius:16px;border:2px dashed #0003;padding:14px;text-align:center;color:var(--muted)}
-    .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}footer{font-size:12px;color:var(--muted);text-align:center}
-    .locked input{pointer-events:none;opacity:.6}#footerLinks{margin-top:10px;text-align:center;font-size:12px}#footerLinks a{color:inherit}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>筋トレ＆ダイエットタイマー（超シンプル）</title>
+<style>
+  :root { --fg:#111; --bg:#fff; --muted:#666; --accent:#0a84ff; --card:#f6f7f8 }
+  @media (prefers-color-scheme: dark){
+    :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e }
+  }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui, "Noto Sans JP", sans-serif}
+  .wrap{max-width:560px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:16px;padding:16px}
+  h1{margin:0 0 12px;font-size:18px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  label{display:block;font-size:12px;color:var(--muted);margin:4px 0}
+  input{width:100%;padding:10px;border-radius:12px;border:1px solid #0000;outline:1px solid #0003;background:#ffffff08;color:var(--fg);font-size:18px}
+  .big{font-size:80px;font-weight:800;text-align:center;margin:10px 0}
+  .sub{text-align:center;color:var(--muted);margin-top:-8px}
+  .row{display:flex;gap:10px;margin-top:10px}
+  button{flex:1;padding:12px;border:0;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer}
+  .start{background:var(--accent);color:#fff}
+  .pause{background:#ffd60a}
+  .reset{background:#e5e5ea}
+</style>
 </head>
 <body>
-  <div class="app" id="app">
-    <header>
-      <h1>筋トレ＆ダイエットタイマー</h1>
-      <p>ハンズフリー操作 × 音声ガイド × スリープ防止（HIIT/有酸素/筋トレ対応）</p>
-    </header>
+<div class="wrap">
+  <div class="card">
+    <h1>筋トレ＆ダイエットタイマー</h1>
+    <div class="grid">
+      <div><label for="work">作業(秒)</label><input id="work" type="number" min="1" value="30"></div>
+      <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1" value="15"></div>
+      <div><label for="rounds">回数</label><input id="rounds" type="number" min="1" value="8"></div>
+    </div>
 
-    <main id="touchArea">
-      <div class="grid">
-        <div><label for="work">作業(秒)</label><input id="work" type="number" min="1" value="30" /></div>
-        <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1" value="15" /></div>
-        <div><label for="rounds">回数</label><input id="rounds" type="number" min="1" value="8" /></div>
-      </div>
+    <div class="big" id="display">00:30</div>
+    <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
 
-      <div class="switches">
-        <label class="chip"><input type="checkbox" id="countIn" checked /> カウントイン</label>
-        <label class="chip"><input type="checkbox" id="voiceGuide" checked /> 音声ガイド</label>
-        <label class="chip"><input type="checkbox" id="lockUI" /> 設定ロック</label>
-        <button class="secondary" id="btnVoice">音声ON</button>
-      </div>
-
-      <div class="big" id="display">00:30</div>
-      <div class="phase" id="phase">待機中（タップで開始）</div>
-      <div class="rounds"><span id="count">0</span>/<span id="total">8</span> ラウンド</div>
-
-      <div class="row">
-        <button class="start" id="btnStart">スタート</button>
-        <button class="pause" id="btnPause" disabled>一時停止</button>
-        <button class="reset" id="btnReset" disabled>リセット</button>
-      </div>
-
-      <div class="tapzone">画面タップ＝開始/一時停止｜スワイプ右＝次へ｜スワイプ左＝まえへ</div>
-      <div class="hint">音声コマンド例：「スタート / ポーズ / リセット / 次へ / まえ / 残り時間」</div>
-    </main>
-
-    <footer>
-      スリープ防止・音声は最初の操作後に有効化されます。
-      <div id="footerLinks">
-        X <a href="https://x.com/kkp_webninja" target="_blank">@kkp_webninja</a><br>
-        🏯 <a href="https://kkpwebninja.com" target="_blank">web忍者の本丸</a>
-      </div>
-    </footer>
+    <div class="row">
+      <button class="start" id="btnStart">スタート</button>
+      <button class="pause" id="btnPause" disabled>一時停止</button>
+      <button class="reset" id="btnReset" disabled>リセット</button>
+    </div>
   </div>
+</div>
 
-  <script>
-// JavaScript 本体ロジック（次のステップで挿入予定だった内容をここでフル展開）
+<script>
+(() => {
+  // ===== 参照 =====
+  const $ = id => document.getElementById(id);
+  const elWork=$("work"), elRest=$("rest"), elRounds=$("rounds");
+  const elDisp=$("display"), elPhase=$("phase"), elCount=$("count"), elTotal=$("total");
+  const btnStart=$("btnStart"), btnPause=$("btnPause"), btnReset=$("btnReset");
 
-let timer, count = 0, total = 8, phase = 'work', running = false, remaining = 0, wakeLock = null;
-const workEl = document.getElementById('work'), restEl = document.getElementById('rest'), roundsEl = document.getElementById('rounds');
-const displayEl = document.getElementById('display'), countEl = document.getElementById('count'), totalEl = document.getElementById('total'), phaseEl = document.getElementById('phase');
-const startBtn = document.getElementById('btnStart'), pauseBtn = document.getElementById('btnPause'), resetBtn = document.getElementById('btnReset');
-const voiceBtn = document.getElementById('btnVoice');
+  // ===== 最小限の状態 =====
+  let running=false, paused=false, mode="作業"; // "作業" or "休憩"
+  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null;
 
-function speak(text) {
-  if (!document.getElementById('voiceGuide').checked) return;
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ja-JP';
-  speechSynthesis.speak(utter);
-}
-
-function format(t) {
-  const m = Math.floor(t / 60), s = t % 60;
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
-function startPhase() {
-  total = parseInt(roundsEl.value);
-  countEl.textContent = count;
-  totalEl.textContent = total;
-  phaseEl.textContent = phase === 'work' ? '作業中' : '休憩中';
-  const seconds = phase === 'work' ? parseInt(workEl.value) : parseInt(restEl.value);
-  remaining = seconds;
-  displayEl.textContent = format(remaining);
-  speak(`${phase === 'work' ? '作業' : '休憩'}開始`);
-  if (document.getElementById('countIn').checked) {
-    speak('3'); setTimeout(() => speak('2'), 1000); setTimeout(() => speak('1'), 2000);
-    setTimeout(runTimer, 3000);
-  } else runTimer();
-}
-
-function runTimer() {
-  running = true;
-  startBtn.disabled = true; pauseBtn.disabled = false; resetBtn.disabled = false;
-  timer = setInterval(() => {
-    remaining--;
-    displayEl.textContent = format(remaining);
-    if (remaining === 10) speak('残り10秒');
-    if (remaining <= 0) {
-      clearInterval(timer);
-      running = false;
-      if (phase === 'work') count++;
-      if (count >= total && phase === 'work') {
-        speak('終了！お疲れさまでした');
-        reset(); return;
-      }
-      phase = phase === 'work' ? 'rest' : 'work';
-      startPhase();
-    }
-  }, 1000);
-}
-
-function pause() {
-  clearInterval(timer); running = false;
-  startBtn.disabled = false; pauseBtn.disabled = true;
-  speak('一時停止');
-}
-
-function reset() {
-  clearInterval(timer); running = false; count = 0; phase = 'work';
-  displayEl.textContent = format(parseInt(workEl.value));
-  phaseEl.textContent = '待機中（タップで開始）';
-  countEl.textContent = 0; totalEl.textContent = roundsEl.value;
-  startBtn.disabled = false; pauseBtn.disabled = true; resetBtn.disabled = true;
-}
-
-startBtn.onclick = () => { if (!running) startPhase(); };
-pauseBtn.onclick = pause;
-resetBtn.onclick = reset;
-
-document.getElementById('lockUI').onchange = e => {
-  document.querySelector('.grid').classList.toggle('locked', e.target.checked);
-};
-
-voiceBtn.onclick = () => {
-  const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recog.lang = 'ja-JP'; recog.continuous = true;
-  recog.onresult = e => {
-    const cmd = e.results[e.results.length - 1][0].transcript;
-    if (cmd.includes('スタート')) startPhase();
-    else if (cmd.includes('ポーズ') || cmd.includes('一時停止')) pause();
-    else if (cmd.includes('リセット')) reset();
-    else if (cmd.includes('次')) { phase = 'rest'; startPhase(); }
-    else if (cmd.includes('前') || cmd.includes('まえ')) { phase = 'work'; startPhase(); }
-    else if (cmd.includes('残り')) speak(`${remaining}秒です`);
-  };
-  recog.start();
-  speak('音声認識を開始しました');
-};
-
-document.getElementById('touchArea').addEventListener('click', () => {
-  if (running) pause(); else startPhase();
-});
-
-let touchStartX = 0;
-document.getElementById('touchArea').addEventListener('touchstart', e => {
-  touchStartX = e.touches[0].clientX;
-});
-document.getElementById('touchArea').addEventListener('touchend', e => {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 50) {
-    if (dx > 0) { phase = 'rest'; startPhase(); }
-    else { phase = 'work'; startPhase(); }
+  const ENABLE_BEEP = true;
+  let audioCtx;
+  function beep(f=900,d=0.08,v=0.06){
+    if(!ENABLE_BEEP) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type="sine"; o.frequency.value=f; g.gain.value=v;
+      o.connect(g).connect(audioCtx.destination); o.start(); setTimeout(()=>o.stop(), d*1000);
+    }catch(_){}
   }
-});
 
-// Wake Lock（スリープ防止）
-if ('wakeLock' in navigator) {
-  document.addEventListener('click', async () => {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-    } catch (e) { console.log(e); }
-  }, { once: true });
-}
-  </script>
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
+  function secs(){ return mode==="作業" ? Math.max(1,+elWork.value|0) : Math.max(1,+elRest.value|0); }
+  function schedulePhase(s){ phaseEndAt = performance.now() + s*1000; lastShown = null; }
+
+  function setButtons(startDis, pauseDis, resetDis){
+    btnStart.disabled = startDis; btnPause.disabled = pauseDis; btnReset.disabled = resetDis;
+  }
+
+  // 入力変更で表示更新
+  [elWork, elRest, elRounds].forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      if(!running){
+        elDisp.textContent = fmt(Math.max(1, +elWork.value|0));
+        elTotal.textContent = (+elRounds.value|0) || 1;
+      } else {
+        // 進行中に回数だけ反映
+        if(inp===elRounds) elTotal.textContent = (+elRounds.value|0) || 1;
+      }
+    });
+  });
+
+  function loop(){
+    if(!running){ rafId = requestAnimationFrame(loop); return; }
+    const now = performance.now();
+    let remain = Math.ceil((phaseEndAt - now)/1000);
+    if(remain < 0) remain = 0;
+
+    if(remain !== lastShown){
+      lastShown = remain;
+      elDisp.textContent = fmt(remain);
+      elPhase.textContent = running ? `${mode}中` : "待機中";
+      // 10,3,2,1の簡易ビープ
+      if(remain===10) beep(1000,0.1);
+      if(remain<=3 && remain>0) beep(900,0.08);
+    }
+
+    if(remain === 0){
+      beep(mode==="作業"?1200:700,0.12);
+      if(mode==="作業"){
+        mode="休憩"; schedulePhase(secs());
+      }else{
+        roundsDone++; elCount.textContent = roundsDone;
+        if(roundsDone >= (+elRounds.value|0)){
+          // 完了
+          running=false; setButtons(false, true, false);
+          elPhase.textContent="完了！お疲れさま💪";
+        }else{
+          mode="作業"; schedulePhase(secs());
+        }
+      }
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function start(){
+    if(running && !paused) return;
+    if(!running){
+      mode="作業"; roundsDone=0; elCount.textContent="0";
+      elTotal.textContent=(+elRounds.value|0)||1;
+      schedulePhase(Math.max(1,+elWork.value|0));
+    }else if(paused){
+      // 再開：残りを維持（phaseEndAtを現在からの差分分延長）
+      const now = performance.now();
+      const remain = Math.max(0, phaseEndAt - now);
+      phaseEndAt = now + remain;
+    }
+    running=true; paused=false; elPhase.textContent=`${mode}中`;
+    setButtons(true, false, false);
+    if(!rafId) rafId = requestAnimationFrame(loop);
+    beep(1000,0.08);
+  }
+
+  function togglePause(){
+    if(!running) return;
+    paused = !paused;
+    btnPause.textContent = paused ? "再開" : "一時停止";
+    if(paused){
+      // 停止中はphaseEndAtを“残り固定”として保持（表示はループで維持）
+      elPhase.textContent="一時停止中";
+    }else{
+      // 再開時にphaseEndAtを現在基準に再設定
+      const now = performance.now();
+      const remain = Math.max(0, phaseEndAt - now);
+      phaseEndAt = now + remain;
+      elPhase.textContent=`${mode}中`;
+    }
+  }
+
+  function reset(){
+    running=false; paused=false; cancelAnimationFrame(rafId); rafId=null;
+    mode="作業"; roundsDone=0; lastShown=null;
+    elCount.textContent="0"; elTotal.textContent=(+elRounds.value|0)||1;
+    elDisp.textContent = fmt(Math.max(1,+elWork.value|0));
+    elPhase.textContent="待機中";
+    btnPause.textContent="一時停止";
+    setButtons(false, true, true);
+  }
+
+  // ボタン
+  btnStart.addEventListener("click", start);
+  btnPause.addEventListener("click", togglePause);
+  btnReset.addEventListener("click", reset);
+
+  // 初期表示
+  elDisp.textContent = fmt(Math.max(1,+elWork.value|0));
+  elTotal.textContent = (+elRounds.value|0) || 1;
+})();
+</script>
 </body>
 </html>

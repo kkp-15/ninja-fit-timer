@@ -86,8 +86,124 @@
   </div>
 
   <script>
-// JavaScript フルコードをここに記述する（この後続けて送信します）
-// 分量が非常に多いため、1つの送信で収まらない場合は分割して送ります
+// JavaScript 本体ロジック（次のステップで挿入予定だった内容をここでフル展開）
+
+let timer, count = 0, total = 8, phase = 'work', running = false, remaining = 0, wakeLock = null;
+const workEl = document.getElementById('work'), restEl = document.getElementById('rest'), roundsEl = document.getElementById('rounds');
+const displayEl = document.getElementById('display'), countEl = document.getElementById('count'), totalEl = document.getElementById('total'), phaseEl = document.getElementById('phase');
+const startBtn = document.getElementById('btnStart'), pauseBtn = document.getElementById('btnPause'), resetBtn = document.getElementById('btnReset');
+const voiceBtn = document.getElementById('btnVoice');
+
+function speak(text) {
+  if (!document.getElementById('voiceGuide').checked) return;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  speechSynthesis.speak(utter);
+}
+
+function format(t) {
+  const m = Math.floor(t / 60), s = t % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function startPhase() {
+  total = parseInt(roundsEl.value);
+  countEl.textContent = count;
+  totalEl.textContent = total;
+  phaseEl.textContent = phase === 'work' ? '作業中' : '休憩中';
+  const seconds = phase === 'work' ? parseInt(workEl.value) : parseInt(restEl.value);
+  remaining = seconds;
+  displayEl.textContent = format(remaining);
+  speak(`${phase === 'work' ? '作業' : '休憩'}開始`);
+  if (document.getElementById('countIn').checked) {
+    speak('3'); setTimeout(() => speak('2'), 1000); setTimeout(() => speak('1'), 2000);
+    setTimeout(runTimer, 3000);
+  } else runTimer();
+}
+
+function runTimer() {
+  running = true;
+  startBtn.disabled = true; pauseBtn.disabled = false; resetBtn.disabled = false;
+  timer = setInterval(() => {
+    remaining--;
+    displayEl.textContent = format(remaining);
+    if (remaining === 10) speak('残り10秒');
+    if (remaining <= 0) {
+      clearInterval(timer);
+      running = false;
+      if (phase === 'work') count++;
+      if (count >= total && phase === 'work') {
+        speak('終了！お疲れさまでした');
+        reset(); return;
+      }
+      phase = phase === 'work' ? 'rest' : 'work';
+      startPhase();
+    }
+  }, 1000);
+}
+
+function pause() {
+  clearInterval(timer); running = false;
+  startBtn.disabled = false; pauseBtn.disabled = true;
+  speak('一時停止');
+}
+
+function reset() {
+  clearInterval(timer); running = false; count = 0; phase = 'work';
+  displayEl.textContent = format(parseInt(workEl.value));
+  phaseEl.textContent = '待機中（タップで開始）';
+  countEl.textContent = 0; totalEl.textContent = roundsEl.value;
+  startBtn.disabled = false; pauseBtn.disabled = true; resetBtn.disabled = true;
+}
+
+startBtn.onclick = () => { if (!running) startPhase(); };
+pauseBtn.onclick = pause;
+resetBtn.onclick = reset;
+
+document.getElementById('lockUI').onchange = e => {
+  document.querySelector('.grid').classList.toggle('locked', e.target.checked);
+};
+
+voiceBtn.onclick = () => {
+  const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recog.lang = 'ja-JP'; recog.continuous = true;
+  recog.onresult = e => {
+    const cmd = e.results[e.results.length - 1][0].transcript;
+    if (cmd.includes('スタート')) startPhase();
+    else if (cmd.includes('ポーズ') || cmd.includes('一時停止')) pause();
+    else if (cmd.includes('リセット')) reset();
+    else if (cmd.includes('次')) { phase = 'rest'; startPhase(); }
+    else if (cmd.includes('前') || cmd.includes('まえ')) { phase = 'work'; startPhase(); }
+    else if (cmd.includes('残り')) speak(`${remaining}秒です`);
+  };
+  recog.start();
+  speak('音声認識を開始しました');
+};
+
+document.getElementById('touchArea').addEventListener('click', () => {
+  if (running) pause(); else startPhase();
+});
+
+let touchStartX = 0;
+document.getElementById('touchArea').addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+});
+document.getElementById('touchArea').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) {
+    if (dx > 0) { phase = 'rest'; startPhase(); }
+    else { phase = 'work'; startPhase(); }
+  }
+});
+
+// Wake Lock（スリープ防止）
+if ('wakeLock' in navigator) {
+  document.addEventListener('click', async () => {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) { console.log(e); }
+  }, { once: true });
+}
   </script>
 </body>
 </html>

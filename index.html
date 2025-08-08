@@ -7,7 +7,7 @@
 
 <!-- ✅ OGP設定（画像はルート直下の k2c-ogp.png を想定） -->
 <meta property="og:title" content="筋トレ＆ダイエットタイマー" />
-<meta property="og:description" content="タバタ/有酸素/筋トレに使えるハンズフリー対応インターバルタイマー。作業中は動画連動、休憩は自動停止、3秒カウントイン＆正確カウントダウン。" />
+<meta property="og:description" content="タバタ/有酸素/筋トレに使えるハンズフリー対応インターバルタイマー。トレーニング中は動画連動、休憩は自動停止、3秒カウントイン＆正確カウントダウン。" />
 <meta property="og:image" content="https://fit.kkpwebninja.com/k2c-ogp.png" />
 <meta property="og:url" content="https://fit.kkpwebninja.com/" />
 <meta property="og:type" content="website" />
@@ -81,7 +81,7 @@
     <!-- 上：カウントダウン＆操作 -->
     <section class="display-block">
       <div class="big" id="display">00:20</div>
-      <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
+      <div class="sub"><span id="phase">待機中</span> / <span id="count">1</span>/<span id="total">8</span> ラウンド</div>
       <div class="row">
         <button class="start" id="btnStart">スタート</button>
         <button class="pause" id="btnPause" disabled>一時停止</button>
@@ -104,7 +104,7 @@
       </div>
 
       <div class="grid">
-        <div><label for="work">作業(秒)</label><input id="work" type="number" min="1"></div>
+        <div><label for="work">トレーニング(秒)</label><input id="work" type="number" min="1"></div>
         <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1"></div>
         <div><label for="rounds">回数</label><input id="rounds" type="number" min="1"></div>
       </div>
@@ -160,7 +160,7 @@
     core:     { name:"コア集中",   work:30, rest:15, rounds:10 },
     custom:   { name:"カスタム",   work:20, rest:10, rounds:8 },
   };
-  const LS_KEY = "mdt-settings-v7"; // レイアウト調整＋OGP対応版
+  const LS_KEY = "mdt-settings-v8"; // 1始まり＆表示文言更新
   const ONBOARDED_KEY = "mdt-onboarded";
 
   // ===== 便利関数 =====
@@ -173,6 +173,7 @@
   function setInputs({work,rest,rounds}){
     elWork.value = work; elRest.value = rest; elRounds.value = rounds;
     elTotal.textContent = rounds;
+    elCount.textContent = "1"; // 1回目始まり
     if(!running) elDisp.textContent = fmt(work);
   }
   function setActiveChip(key){
@@ -182,9 +183,10 @@
     });
   }
 
-  // ===== 状態（重複宣言なし）=====
-  let running=false, paused=false, mode="作業";
-  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
+  // ===== 状態 =====
+  let running=false, paused=false, phase="train"; // "train" or "rest"
+  let currentRound=1, totalRounds=8;
+  let phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
   let selectedKey="tabata";
 
   // ===== ビープ =====
@@ -254,11 +256,11 @@
   }
   [elWork, elRest, elRounds].forEach(inp=>{
     inp.addEventListener("change", ()=>{
+      totalRounds = sec(elRounds.value);
+      elTotal.textContent = totalRounds;
       if(!running){
         elDisp.textContent = fmt(sec(elWork.value));
-        elTotal.textContent = sec(elRounds.value);
-      }else if (inp===elRounds){
-        elTotal.textContent = sec(elRounds.value);
+        elCount.textContent = "1"; // 常に1から
       }
       if(isNowCustom()){ selectedKey="custom"; setActiveChip("custom"); }
       save();
@@ -293,9 +295,13 @@
     document.body.classList.remove('video-open');  // 余白解除
   }
 
-  // ===== タイマー（performance.now基準で正確／一時停止修正） =====
+  // ===== タイマー（正確カウント＋一時停止修正） =====
   function schedulePhase(seconds){ phaseEndAt = performance.now() + seconds*1000; lastShown=null; }
-  function currentPhaseSecs(){ return mode==="作業" ? sec(elWork.value) : sec(elRest.value); }
+  function secsFor(phaseName){ return phaseName==="train" ? sec(elWork.value) : sec(elRest.value); }
+
+  function renderPhaseLabel(){
+    elPhase.textContent = phase==="train" ? "トレーニング中" : "休憩中";
+  }
 
   function loop(){
     if(!running || paused){ rafId = requestAnimationFrame(loop); return; }
@@ -306,30 +312,35 @@
     if(remain !== lastShown){
       lastShown = remain;
       elDisp.textContent = fmt(remain);
-      elPhase.textContent = `${mode}中`;
+      renderPhaseLabel();
       if(remain===10) beep(1000,0.1);
       if(remain<=3 && remain>0) beep(900,0.08);
     }
 
     if(remain === 0){
-      beep(mode==="作業"?1200:700,0.12);
-      if(mode==="作業"){
-        mode="休憩";
-        stopVideo();
-        schedulePhase(currentPhaseSecs());
-        elPhase.textContent="休憩中";
-      }else{
-        roundsDone++; elCount.textContent = roundsDone;
-        if(roundsDone >= sec(elRounds.value)){
+      beep(phase==="train"?1200:700,0.12);
+      if(phase === "train"){
+        // トレーニング終了
+        if(currentRound >= totalRounds){
+          // ここで完了
           running=false; setButtons(false, true, false);
           elPhase.textContent="完了！お疲れさま💪";
           stopVideo();
         }else{
-          mode="作業";
-          schedulePhase(currentPhaseSecs());
-          elPhase.textContent="作業中";
-          startVideo();
+          // 休憩へ
+          phase="rest";
+          schedulePhase(secsFor("rest"));
+          renderPhaseLabel();
+          stopVideo();
         }
+      }else{
+        // 休憩終了 → 次のトレーニングへ
+        currentRound += 1;
+        elCount.textContent = String(currentRound);
+        phase="train";
+        schedulePhase(secsFor("train"));
+        renderPhaseLabel();
+        startVideo();
       }
     }
     rafId = requestAnimationFrame(loop);
@@ -339,7 +350,14 @@
   async function start(){
     if(running && !paused) return;
 
+    totalRounds = sec(elRounds.value);
+
     if(!running){
+      // 初期化：1回目から
+      currentRound = 1;
+      elCount.textContent = "1";
+      elTotal.textContent = totalRounds;
+
       if (chkCountIn.checked){
         setButtons(true,true,true);
         for (let c=3; c>0; c--){
@@ -349,17 +367,17 @@
           await new Promise(r=>setTimeout(r,1000));
         }
       }
-      mode="作業"; roundsDone=0; elCount.textContent="0";
-      elTotal.textContent = sec(elRounds.value);
-      schedulePhase(sec(elWork.value));
+      phase="train";
+      schedulePhase(secsFor("train"));
+      renderPhaseLabel();
       startVideo();
     } else if (paused){
       phaseEndAt = performance.now() + pausedRemainMs;
-      if (mode === "作業") startVideo(); else stopVideo();
+      renderPhaseLabel();
+      if (phase === "train") startVideo(); else stopVideo();
     }
 
     running=true; paused=false;
-    elPhase.textContent = `${mode}中`;
     setButtons(true, false, false);
     if(!rafId) rafId = requestAnimationFrame(loop);
     beep(1000,0.08);
@@ -375,15 +393,17 @@
       stopVideo();
     } else {
       phaseEndAt = performance.now() + pausedRemainMs;
-      elPhase.textContent = `${mode}中`;
-      if (mode === "作業") startVideo();
+      renderPhaseLabel();
+      if (phase === "train") startVideo();
     }
   }
 
   function reset(){
     running=false; paused=false; cancelAnimationFrame(rafId); rafId=null;
-    mode="作業"; roundsDone=0; lastShown=null; pausedRemainMs=0;
-    elCount.textContent="0"; elTotal.textContent = sec(elRounds.value);
+    phase="train"; lastShown=null; pausedRemainMs=0;
+    // 表示は常に1回目から
+    currentRound=1; elCount.textContent="1";
+    totalRounds = sec(elRounds.value); elTotal.textContent = totalRounds;
     elDisp.textContent = fmt(sec(elWork.value));
     elPhase.textContent="待機中";
     btnPause.textContent="一時停止";

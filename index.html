@@ -9,9 +9,10 @@
   @media (prefers-color-scheme: dark){
     :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e }
   }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui, "Noto Sans JP", sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif}
   .wrap{max-width:560px;margin:0 auto;padding:16px}
-  .card{background:var(--card);border-radius:16px;padding:16px}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
   h1{margin:0 0 12px;font-size:18px}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   label{display:block;font-size:12px;color:var(--muted);margin:4px 0}
@@ -29,15 +30,19 @@
 <div class="wrap">
   <div class="card">
     <h1>筋トレ＆ダイエットタイマー</h1>
+
+    <!-- 入力：作業/休憩/回数 -->
     <div class="grid">
       <div><label for="work">作業(秒)</label><input id="work" type="number" min="1" value="30"></div>
       <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1" value="15"></div>
       <div><label for="rounds">回数</label><input id="rounds" type="number" min="1" value="8"></div>
     </div>
 
+    <!-- 大きいカウントダウン -->
     <div class="big" id="display">00:30</div>
     <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
 
+    <!-- 操作ボタン -->
     <div class="row">
       <button class="start" id="btnStart">スタート</button>
       <button class="pause" id="btnPause" disabled>一時停止</button>
@@ -48,135 +53,160 @@
 
 <script>
 (() => {
-  // ===== 参照 =====
+  // ===== 要素参照 =====
   const $ = id => document.getElementById(id);
   const elWork=$("work"), elRest=$("rest"), elRounds=$("rounds");
   const elDisp=$("display"), elPhase=$("phase"), elCount=$("count"), elTotal=$("total");
   const btnStart=$("btnStart"), btnPause=$("btnPause"), btnReset=$("btnReset");
 
-  // ===== 最小限の状態 =====
-  let running=false, paused=false, mode="作業"; // "作業" or "休憩"
-  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null;
+  // ===== 状態 =====
+  let running=false;           // タイマー稼働中か
+  let paused=false;            // 一時停止中か
+  let mode="作業";             // "作業" or "休憩"
+  let roundsDone=0;            // 終了したセット数
+  let phaseEndAt=0;            // 現フェーズの終了予定時刻（ms, performance.now基準）
+  let lastShown=null;          // 直近に描画した残り秒
+  let rafId=null;              // requestAnimationFrame ID
+  let pausedRemainMs=0;        // 一時停止で保持する残り時間(ms)
 
+  // ===== 短いビープ =====
   const ENABLE_BEEP = true;
   let audioCtx;
   function beep(f=900,d=0.08,v=0.06){
     if(!ENABLE_BEEP) return;
     try{
       audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type="sine"; o.frequency.value=f; g.gain.value=v;
-      o.connect(g).connect(audioCtx.destination); o.start(); setTimeout(()=>o.stop(), d*1000);
+      const osc=audioCtx.createOscillator(), g=audioCtx.createGain();
+      osc.type="sine"; osc.frequency.value=f; g.gain.value=v;
+      osc.connect(g).connect(audioCtx.destination);
+      osc.start(); setTimeout(()=>osc.stop(), d*1000);
     }catch(_){}
   }
 
+  // ===== ユーティリティ =====
   const pad = n => String(n).padStart(2,"0");
   const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
-  function secs(){ return mode==="作業" ? Math.max(1,+elWork.value|0) : Math.max(1,+elRest.value|0); }
-  function schedulePhase(s){ phaseEndAt = performance.now() + s*1000; lastShown = null; }
+  const sec = v => Math.max(1, (+v|0) );                 // 1秒未満にならないよう丸め
+  const currentPhaseSecs = () => mode==="作業" ? sec(elWork.value) : sec(elRest.value);
+  const schedulePhase = seconds => { phaseEndAt = performance.now() + seconds*1000; lastShown=null; };
 
-  function setButtons(startDis, pauseDis, resetDis){
-    btnStart.disabled = startDis; btnPause.disabled = pauseDis; btnReset.disabled = resetDis;
+  function setButtons(disStart, disPause, disReset){
+    btnStart.disabled = disStart; btnPause.disabled = disPause; btnReset.disabled = disReset;
   }
 
-  // 入力変更で表示更新
+  // ===== 入力変更時の反映（待機中のみ完全反映） =====
   [elWork, elRest, elRounds].forEach(inp=>{
     inp.addEventListener("change", ()=>{
       if(!running){
-        elDisp.textContent = fmt(Math.max(1, +elWork.value|0));
-        elTotal.textContent = (+elRounds.value|0) || 1;
-      } else {
-        // 進行中に回数だけ反映
-        if(inp===elRounds) elTotal.textContent = (+elRounds.value|0) || 1;
+        elDisp.textContent = fmt(sec(elWork.value));
+        elTotal.textContent = sec(elRounds.value);
+      }else{
+        // 稼働中は回数だけ反映（現在のフェーズ長を動的に変えるとズレるため）
+        if(inp===elRounds) elTotal.textContent = sec(elRounds.value);
       }
     });
   });
 
+  // ===== 精密カウントダウンループ（壁時計基準） =====
   function loop(){
-    if(!running){ rafId = requestAnimationFrame(loop); return; }
+    // 停止 or 一時停止中は進めない（描画だけ回す）
+    if(!running || paused){
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
+
     const now = performance.now();
-    let remain = Math.ceil((phaseEndAt - now)/1000);
+    let remain = Math.ceil((phaseEndAt - now)/1000); // 秒単位に丸め
     if(remain < 0) remain = 0;
 
     if(remain !== lastShown){
       lastShown = remain;
       elDisp.textContent = fmt(remain);
-      elPhase.textContent = running ? `${mode}中` : "待機中";
-      // 10,3,2,1の簡易ビープ
+      elPhase.textContent = `${mode}中`;
+      // 簡易ビープ（10秒・終盤3,2,1）
       if(remain===10) beep(1000,0.1);
       if(remain<=3 && remain>0) beep(900,0.08);
     }
 
     if(remain === 0){
+      // フェーズ終了：切替して次の終了時刻を予約
       beep(mode==="作業"?1200:700,0.12);
       if(mode==="作業"){
-        mode="休憩"; schedulePhase(secs());
+        mode="休憩";
+        schedulePhase(currentPhaseSecs());
+        elPhase.textContent = "休憩中";
       }else{
         roundsDone++; elCount.textContent = roundsDone;
-        if(roundsDone >= (+elRounds.value|0)){
-          // 完了
+        if(roundsDone >= sec(elRounds.value)){
+          // 全セット完了
           running=false; setButtons(false, true, false);
           elPhase.textContent="完了！お疲れさま💪";
         }else{
-          mode="作業"; schedulePhase(secs());
+          mode="作業";
+          schedulePhase(currentPhaseSecs());
+          elPhase.textContent = "作業中";
         }
       }
     }
     rafId = requestAnimationFrame(loop);
   }
 
+  // ===== 開始/再開 =====
   function start(){
-    if(running && !paused) return;
+    if(running && !paused) return; // 既に走行中
     if(!running){
-      mode="作業"; roundsDone=0; elCount.textContent="0";
-      elTotal.textContent=(+elRounds.value|0)||1;
-      schedulePhase(Math.max(1,+elWork.value|0));
+      mode="作業";
+      roundsDone=0; elCount.textContent="0";
+      elTotal.textContent = sec(elRounds.value);
+      schedulePhase(sec(elWork.value));
     }else if(paused){
-      // 再開：残りを維持（phaseEndAtを現在からの差分分延長）
-      const now = performance.now();
-      const remain = Math.max(0, phaseEndAt - now);
-      phaseEndAt = now + remain;
+      // 再開：一時停止時に保存した残り時間で再スケジュール
+      phaseEndAt = performance.now() + pausedRemainMs;
     }
-    running=true; paused=false; elPhase.textContent=`${mode}中`;
+    running=true; paused=false;
+    elPhase.textContent = `${mode}中`;
     setButtons(true, false, false);
     if(!rafId) rafId = requestAnimationFrame(loop);
     beep(1000,0.08);
   }
 
+  // ===== 一時停止/再開トグル（修正版） =====
   function togglePause(){
     if(!running) return;
     paused = !paused;
     btnPause.textContent = paused ? "再開" : "一時停止";
-    if(paused){
-      // 停止中はphaseEndAtを“残り固定”として保持（表示はループで維持）
-      elPhase.textContent="一時停止中";
-    }else{
-      // 再開時にphaseEndAtを現在基準に再設定
-      const now = performance.now();
-      const remain = Math.max(0, phaseEndAt - now);
-      phaseEndAt = now + remain;
-      elPhase.textContent=`${mode}中`;
+
+    if (paused) {
+      // 現時点の残りミリ秒を固定して保存（ループは止める）
+      pausedRemainMs = Math.max(0, phaseEndAt - performance.now());
+      elPhase.textContent = "一時停止中";
+    } else {
+      // 再開：今から pausedRemainMs 先を新たな終了時刻に
+      phaseEndAt = performance.now() + pausedRemainMs;
+      elPhase.textContent = `${mode}中`;
     }
   }
 
+  // ===== リセット =====
   function reset(){
-    running=false; paused=false; cancelAnimationFrame(rafId); rafId=null;
-    mode="作業"; roundsDone=0; lastShown=null;
-    elCount.textContent="0"; elTotal.textContent=(+elRounds.value|0)||1;
-    elDisp.textContent = fmt(Math.max(1,+elWork.value|0));
+    running=false; paused=false;
+    cancelAnimationFrame(rafId); rafId=null;
+    mode="作業"; roundsDone=0; lastShown=null; pausedRemainMs=0;
+    elCount.textContent="0"; elTotal.textContent = sec(elRounds.value);
+    elDisp.textContent = fmt(sec(elWork.value));
     elPhase.textContent="待機中";
     btnPause.textContent="一時停止";
     setButtons(false, true, true);
   }
 
-  // ボタン
+  // ===== ボタンイベント =====
   btnStart.addEventListener("click", start);
   btnPause.addEventListener("click", togglePause);
   btnReset.addEventListener("click", reset);
 
-  // 初期表示
-  elDisp.textContent = fmt(Math.max(1,+elWork.value|0));
-  elTotal.textContent = (+elRounds.value|0) || 1;
+  // ===== 初期表示 =====
+  elDisp.textContent = fmt(sec(elWork.value));
+  elTotal.textContent = sec(elRounds.value);
 })();
 </script>
 </body>

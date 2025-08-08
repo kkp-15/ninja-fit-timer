@@ -16,23 +16,62 @@
 <meta name="twitter:card" content="summary_large_image" />
 
 <style>
-body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 0;}
-h1 { background: #ff6b6b; color: white; padding: 10px; margin: 0;}
-#display { font-size: 5em; margin: 20px 0;}
-#phase { font-size: 1.5em; margin-bottom: 10px;}
-#count { font-size: 1.2em; margin-bottom: 20px;}
-button { font-size: 1.2em; padding: 10px 20px; margin: 5px; }
-.controls { margin-top: 20px; }
-.mode-select { margin-top: 30px; background: white; padding: 10px; }
-iframe { width: 100%; max-width: 500px; height: 200px; margin-top: 20px; }
+body {
+  font-family: "Hiragino Kaku Gothic ProN", sans-serif;
+  text-align: center;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+h1 {
+  background: #ff6b6b;
+  color: white;
+  padding: 10px;
+  margin: 0;
+}
+#display {
+  font-size: 5em;
+  margin: 20px 0 10px;
+}
+#phase {
+  font-size: 1.5em;
+  margin-bottom: 10px;
+}
+#count {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+button {
+  font-size: 1.2em;
+  padding: 10px 20px;
+  margin: 5px;
+}
+.controls {
+  margin-top: 10px;
+}
+.mode-select {
+  margin: 20px auto;
+  background: white;
+  padding: 10px;
+  max-width: 500px;
+  border-radius: 8px;
+}
+iframe {
+  width: 100%;
+  max-width: 500px;
+  height: 200px;
+  margin-top: 10px;
+  border: none;
+}
 </style>
 </head>
 <body>
 
 <h1>筋トレ＆ダイエットタイマー</h1>
+
 <div id="display">00</div>
 <div id="phase">待機中</div>
-<div id="count">1 回目</div>
+<div id="count">0 回目</div>
 
 <div class="controls">
   <button id="startBtn">スタート</button>
@@ -40,10 +79,8 @@ iframe { width: 100%; max-width: 500px; height: 200px; margin-top: 20px; }
   <button id="resetBtn" disabled>リセット</button>
 </div>
 
-<div id="player"></div>
-
 <div class="mode-select">
-  <label><input type="radio" name="mode" value="tabata" checked> タバタ（20秒運動 / 10秒休憩 ×8）</label><br>
+  <label><input type="radio" name="mode" value="tabata" checked> 筋トレ（20秒運動 / 10秒休憩 ×8）</label><br>
   <label><input type="radio" name="mode" value="diet"> ダイエット（30秒運動 / 15秒休憩 ×6）</label><br>
   <label><input type="radio" name="mode" value="custom"> カスタム：
     運動 <input type="number" id="trainSec" value="20" min="5" max="600"> 秒　
@@ -52,13 +89,16 @@ iframe { width: 100%; max-width: 500px; height: 200px; margin-top: 20px; }
   </label>
 </div>
 
+<div id="player"></div>
+
 <script>
-// モード設定
+// ===== モード設定 =====
 const modes = {
   tabata: {train:20, rest:10, rounds:8},
   diet:   {train:30, rest:15, rounds:6}
 };
 
+// ===== 要素取得 =====
 const elDisp = document.getElementById("display");
 const elPhase = document.getElementById("phase");
 const elCount = document.getElementById("count");
@@ -66,7 +106,8 @@ const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 
-let phase = "wait"; // wait/countdown/train/rest
+// ===== 状態変数 =====
+let phase = "wait"; 
 let currentRound = 1;
 let totalRounds = 8;
 let trainTime = 20;
@@ -77,84 +118,144 @@ let rafId = null;
 let lastShown = null;
 let phaseEndAt = 0;
 
-// YouTubeプレイヤー
+// ===== YouTubeプレイヤー =====
 let player;
 function onYouTubeIframeAPIReady(){
   player = new YT.Player('player', {
     videoId: 'cZRENUODbvw',
-    events: { 'onReady': ()=>stopVideo() }
+    events: { 'onReady': () => stopVideo() }
   });
 }
-function startVideo(){ if(player?.playVideo) player.playVideo(); }
-function stopVideo(){ if(player?.stopVideo) player.stopVideo(); }
+function startVideo(){ if(player && player.playVideo) player.playVideo(); }
+function stopVideo(){ if(player && player.stopVideo) player.stopVideo(); }
 
+// ===== 音 =====
+function beep(freq,dur){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value = freq;
+  osc.start();
+  gain.gain.setValueAtTime(1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur/1000);
+  osc.stop(ctx.currentTime + dur/1000);
+}
+
+// ===== 時間表示 =====
 function fmt(sec){ return sec.toString().padStart(2,'0'); }
 
-function startPhase(newPhase, duration){
-  phase = newPhase;
-  phaseEndAt = performance.now() + duration * 1000;
-  lastShown = null;
-  if(phase === "train"){ elPhase.textContent = "トレーニング中"; startVideo(); }
-  else if(phase === "rest"){ elPhase.textContent = "休憩中"; stopVideo(); }
-  else if(phase === "countdown"){ elPhase.textContent = "開始まで"; stopVideo(); }
-  else { elPhase.textContent = "待機中"; stopVideo(); }
+// ===== カウント処理 =====
+function updateDisplay(remaining){
+  elDisp.textContent = fmt(remaining);
 }
 
-function update(){
+function loop(){
   if(!running) return;
-  const now = performance.now();
-  let remain = Math.max(0, Math.ceil((phaseEndAt - now) / 1000));
-  if(remain !== lastShown){
-    elDisp.textContent = fmt(remain);
-    lastShown = remain;
+  const now = Date.now();
+  let remaining = Math.ceil((phaseEndAt - now) / 1000);
+  
+  if(remaining !== lastShown){
+    lastShown = remaining;
+    updateDisplay(remaining);
   }
-  if(remain <= 0){
-    if(phase === "countdown"){ startPhase("train", trainTime); }
-    else if(phase === "train"){
-      if(currentRound >= totalRounds){ running=false; elPhase.textContent="終了！"; stopVideo(); return; }
-      startPhase("rest", restTime);
-    }
-    else if(phase === "rest"){
+  
+  if(remaining <= 0){
+    if(phase === "countdown"){
+      startPhase("train");
+    } else if(phase === "train"){
+      beep(800,200);
+      if(currentRound >= totalRounds){
+        finish();
+        return;
+      } else {
+        startPhase("rest");
+      }
+    } else if(phase === "rest"){
       currentRound++;
-      elCount.textContent = `${currentRound} 回目`;
-      startPhase("train", trainTime);
+      startPhase("train");
     }
   }
-  rafId = requestAnimationFrame(update);
+  
+  rafId = requestAnimationFrame(loop);
 }
 
-startBtn.addEventListener("click", ()=>{
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  if(mode !== "custom"){ ({train:trainTime, rest:restTime, rounds:totalRounds} = modes[mode]); }
-  else {
+function startPhase(p){
+  phase = p;
+  if(p === "countdown"){
+    elPhase.textContent = "開始準備";
+    elCount.textContent = "";
+    phaseEndAt = Date.now() + 3000;
+    stopVideo();
+  } else if(p === "train"){
+    elPhase.textContent = "トレーニング中";
+    elCount.textContent = `${currentRound} 回目`;
+    phaseEndAt = Date.now() + trainTime*1000;
+    startVideo();
+  } else if(p === "rest"){
+    elPhase.textContent = "休憩中";
+    elCount.textContent = `${currentRound} 回目終了`;
+    phaseEndAt = Date.now() + restTime*1000;
+    stopVideo();
+  }
+}
+
+function finish(){
+  elPhase.textContent = "終了！お疲れさまでした";
+  elDisp.textContent = "00";
+  stopVideo();
+  running = false;
+  pauseBtn.disabled = true;
+  resetBtn.disabled = false;
+}
+
+// ===== ボタン動作 =====
+startBtn.onclick = () => {
+  const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+  if(selectedMode !== "custom"){
+    trainTime = modes[selectedMode].train;
+    restTime = modes[selectedMode].rest;
+    totalRounds = modes[selectedMode].rounds;
+  } else {
     trainTime = parseInt(document.getElementById("trainSec").value);
     restTime = parseInt(document.getElementById("restSec").value);
     totalRounds = parseInt(document.getElementById("rounds").value);
   }
   currentRound = 1;
-  elCount.textContent = "1 回目";
-  running = true; paused = false;
-  startBtn.disabled = true; pauseBtn.disabled = false; resetBtn.disabled = false;
-  startPhase("countdown", 3);
-  update();
-});
+  running = true;
+  paused = false;
+  startPhase("countdown");
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+  resetBtn.disabled = false;
+  loop();
+};
 
-pauseBtn.addEventListener("click", ()=>{
-  if(!running) return;
-  paused = !paused;
-  if(paused){ cancelAnimationFrame(rafId); elPhase.textContent += "（一時停止中）"; stopVideo(); }
-  else { phaseEndAt = performance.now() + lastShown * 1000; update(); }
-});
+pauseBtn.onclick = () => {
+  if(paused){
+    paused = false;
+    phaseEndAt = Date.now() + lastShown*1000;
+    loop();
+    pauseBtn.textContent = "一時停止";
+  } else {
+    paused = true;
+    cancelAnimationFrame(rafId);
+    pauseBtn.textContent = "再開";
+  }
+};
 
-resetBtn.addEventListener("click", ()=>{
-  running = false; paused = false;
+resetBtn.onclick = () => {
+  running = false;
+  paused = false;
   cancelAnimationFrame(rafId);
   elDisp.textContent = "00";
   elPhase.textContent = "待機中";
-  elCount.textContent = "1 回目";
-  startBtn.disabled = false; pauseBtn.disabled = true; resetBtn.disabled = true;
+  elCount.textContent = "0 回目";
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  resetBtn.disabled = true;
   stopVideo();
-});
+};
 </script>
 <script src="https://www.youtube.com/iframe_api"></script>
 

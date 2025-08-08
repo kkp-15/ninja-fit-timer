@@ -1,198 +1,404 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>筋トレ＆ダイエットタイマー</title>
 
-<!-- ✅ OGP設定 -->
+<!-- ✅ OGP設定（画像はルート直下の k2c-ogp.png を想定） -->
 <meta property="og:title" content="筋トレ＆ダイエットタイマー" />
-<meta property="og:description" content="筋トレ・ダイエットの両方に使えるハンズフリー対応インターバルタイマー。タバタ・有酸素運動にも最適。" />
+<meta property="og:description" content="タバタ/有酸素/筋トレに使えるハンズフリー対応インターバルタイマー。作業中は動画連動、休憩は自動停止、3秒カウントイン＆正確カウントダウン。" />
 <meta property="og:image" content="https://fit.kkpwebninja.com/k2c-ogp.png" />
 <meta property="og:url" content="https://fit.kkpwebninja.com/" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
 
 <style>
-body {
-  font-family: sans-serif;
-  text-align: center;
-  margin: 0;
-  padding: 0;
-}
-h1 { margin: 20px 0; }
-#countdown { font-size: 4em; margin: 20px 0; }
-.controls, .settings { margin: 10px 0; }
-label { margin: 0 5px; }
-button {
-  font-size: 1.2em;
-  margin: 5px;
-  padding: 10px 20px;
-}
-#video-container {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: #000;
-}
-body.video-open { padding-bottom: 200px; }
+  :root { --fg:#111; --bg:#fff; --muted:#666; --accent:#0a84ff; --card:#f6f7f8; --shadow:0 6px 20px rgba(0,0,0,.08); --video-h: 200px; }
+  @media (prefers-color-scheme: dark){
+    :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e; --shadow:0 8px 28px rgba(0,0,0,.24) }
+  }
+  @media (max-width: 420px){ :root { --video-h: 160px; } }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif;transition:padding-bottom .2s ease}
+  /* 動画表示中は下に余白を自動確保（数字が隠れない） */
+  body.video-open{ padding-bottom: calc(var(--video-h) + env(safe-area-inset-bottom)); }
+
+  .wrap{max-width:620px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+  .topbar{display:flex;justify-content:space-between;align-items:center}
+  h1{margin:0;font-size:18px}
+  .link{font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline}
+
+  /* 上：カウントダウン＆操作 */
+  .display-block{display:flex;flex-direction:column;gap:6px}
+  .big{font-size:80px;font-weight:800;text-align:center;margin:0}
+  .sub{text-align:center;color:var(--muted)}
+  .row{display:flex;gap:10px;margin-top:4px}
+  button{flex:1;padding:12px;border:0;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer}
+  .start{background:var(--accent);color:#fff}
+  .pause{background:#ffd60a}
+  .reset{background:#e5e5ea}
+
+  /* 下：プリセット・チェック・入力 */
+  .controls{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid #0000;outline:1px solid #0003;cursor:pointer;font-size:14px;background:#ffffff10}
+  .chip.active{background:var(--accent);color:#fff;outline-color:transparent}
+  .chip.small{font-size:12px;opacity:.85}
+  .chip.inline{display:inline-flex;align-items:center;gap:8px}
+  .chip.inline input{accent-color:var(--accent)}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  label{display:block;font-size:12px;color:var(--muted);margin:4px 0}
+  input{width:100%;padding:10px;border-radius:12px;border:1px solid #0000;outline:1px solid #0003;background:#ffffff08;color:var(--fg);font-size:18px}
+
+  /* 初回ダイアログ */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .modal{background:var(--card);color:var(--fg);border-radius:16px;box-shadow:var(--shadow);max-width:520px;width:100%;padding:16px}
+  .modal h2{margin:0 0 10px;font-size:18px}
+  .modal p{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .modal .chips{margin:6px 0 0}
+
+  /* 画面下の動画コンテナ（固定） */
+  #video-container{
+    position:fixed; left:0; right:0; bottom:0;
+    height:var(--video-h); background:#000; display:none; z-index:5;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  #video-container iframe{ width:100%; height:100%; display:block; border:0 }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="card">
+    <div class="topbar">
+      <h1>筋トレ＆ダイエットタイマー</h1>
+      <span id="openPreset" class="link">⚙︎プリセット変更</span>
+    </div>
 
-<h1>筋トレ＆ダイエットタイマー</h1>
+    <!-- 上：カウントダウン＆操作 -->
+    <section class="display-block">
+      <div class="big" id="display">00:20</div>
+      <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
+      <div class="row">
+        <button class="start" id="btnStart">スタート</button>
+        <button class="pause" id="btnPause" disabled>一時停止</button>
+        <button class="reset" id="btnReset" disabled>リセット</button>
+      </div>
+    </section>
 
-<div id="countdown">準備OK?</div>
+    <!-- 下：プリセット・チェック・入力 -->
+    <section class="controls">
+      <div class="chips" id="chips">
+        <span class="chip" data-key="tabata">タバタ(20/10×8)</span>
+        <span class="chip" data-key="diet">ダイエット(40/20×10)</span>
+        <span class="chip" data-key="strength">筋トレ(45/15×10)</span>
+        <span class="chip" data-key="beginner">初心者(30/30×6)</span>
+        <span class="chip" data-key="core">コア集中(30/15×10)</span>
+        <span class="chip small" data-key="custom">カスタム</span>
+        <label class="chip small inline" title="開始時に 3,2,1 のカウントダウンを入れます">
+          <input type="checkbox" id="countIn" checked> カウントイン(3秒)
+        </label>
+      </div>
 
-<div class="settings">
-  <label><input type="radio" name="mode" value="tabata" checked> タバタ</label>
-  <label><input type="radio" name="mode" value="diet"> ダイエット</label>
-  <label><input type="radio" name="mode" value="custom"> カスタム</label>
+      <div class="grid">
+        <div><label for="work">作業(秒)</label><input id="work" type="number" min="1"></div>
+        <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1"></div>
+        <div><label for="rounds">回数</label><input id="rounds" type="number" min="1"></div>
+      </div>
+    </section>
+  </div>
 </div>
 
-<div id="custom-settings" style="display:none;">
-  <label>運動秒数: <input type="number" id="workTime" value="20"></label>
-  <label>休憩秒数: <input type="number" id="restTime" value="10"></label>
-  <label>セット数: <input type="number" id="sets" value="8"></label>
+<!-- 初回プリセットダイアログ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h2>目的を選んでください</h2>
+    <p>選ぶだけで秒数と回数が自動でセットされます（次回以降はスキップされます）。</p>
+    <div class="chips" id="modalChips">
+      <span class="chip" data-key="tabata">タバタ(20/10×8)</span>
+      <span class="chip" data-key="diet">ダイエット(40/20×10)</span>
+      <span class="chip" data-key="strength">筋トレ(45/15×10)</span>
+      <span class="chip" data-key="beginner">初心者(30/30×6)</span>
+      <span class="chip" data-key="core">コア集中(30/15×10)</span>
+    </div>
+  </div>
 </div>
 
-<div class="controls">
-  <button id="startBtn">スタート</button>
-  <button id="pauseBtn">一時停止</button>
-  <button id="resetBtn">リセット</button>
-</div>
-
+<!-- 画面下の動画（YouTube IFrame） -->
 <div id="video-container">
-  <iframe id="ytplayer" width="100%" height="200" frameborder="0"
-    allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  <iframe id="workout-video"
+    src="https://www.youtube.com/embed/cZRENUODbvw?enablejsapi=1&rel=0&modestbranding=1&playsinline=1"
+    title="Workout Video" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
 </div>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-let countdownEl = document.getElementById('countdown');
-let videoContainer = document.getElementById('video-container');
-let player;
-let timer, timeLeft, currentSet, isWork, isPaused = false;
+(() => {
+  // ===== 要素参照 =====
+  const $ = id => document.getElementById(id);
+  const elWork=$("work"), elRest=$("rest"), elRounds=$("rounds");
+  const elDisp=$("display"), elPhase=$("phase"), elCount=$("count"), elTotal=$("total");
+  const btnStart=$("btnStart"), btnPause=$("btnPause"), btnReset=$("btnReset");
+  const chipWrap = document.getElementById("chips");
+  const openPreset = document.getElementById("openPreset");
+  const modalBack = document.getElementById("modalBack");
+  const modalChips = document.getElementById("modalChips");
+  const chkCountIn = document.getElementById("countIn");
+  const videoContainer = document.getElementById("video-container");
 
-const modes = {
-  tabata: {work: 20, rest: 10, sets: 8},
-  diet: {work: 30, rest: 15, sets: 6},
-};
+  // ===== プリセット =====
+  const PRESETS = {
+    tabata:   { name:"タバタ",     work:20, rest:10, rounds:8 },
+    diet:     { name:"ダイエット", work:40, rest:20, rounds:10 },
+    strength: { name:"筋トレ",     work:45, rest:15, rounds:10 },
+    beginner: { name:"初心者",     work:30, rest:30, rounds:6 },
+    core:     { name:"コア集中",   work:30, rest:15, rounds:10 },
+    custom:   { name:"カスタム",   work:20, rest:10, rounds:8 },
+  };
+  const LS_KEY = "mdt-settings-v7"; // レイアウト調整＋OGP対応版
+  const ONBOARDED_KEY = "mdt-onboarded";
 
-document.querySelectorAll('input[name="mode"]').forEach(r => {
-  r.addEventListener('change', () => {
-    if (r.value === 'custom') {
-      document.getElementById('custom-settings').style.display = 'block';
-    } else {
-      document.getElementById('custom-settings').style.display = 'none';
-    }
-  });
-});
-
-document.getElementById('startBtn').addEventListener('click', startTimer);
-document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
-document.getElementById('resetBtn').addEventListener('click', resetTimer);
-
-function startTimer() {
-  let selectedMode = document.querySelector('input[name="mode"]:checked').value;
-  let workTime, restTime, sets;
-  if (selectedMode === 'custom') {
-    workTime = parseInt(document.getElementById('workTime').value) || 20;
-    restTime = parseInt(document.getElementById('restTime').value) || 10;
-    sets = parseInt(document.getElementById('sets').value) || 8;
-  } else {
-    workTime = modes[selectedMode].work;
-    restTime = modes[selectedMode].rest;
-    sets = modes[selectedMode].sets;
+  // ===== 便利関数 =====
+  function sec(v){ return Math.max(1, (+v|0)); }
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
+  function setButtons(disStart, disPause, disReset){
+    btnStart.disabled = disStart; btnPause.disabled = disPause; btnReset.disabled = disReset;
+  }
+  function setInputs({work,rest,rounds}){
+    elWork.value = work; elRest.value = rest; elRounds.value = rounds;
+    elTotal.textContent = rounds;
+    if(!running) elDisp.textContent = fmt(work);
+  }
+  function setActiveChip(key){
+    [...chipWrap.querySelectorAll(".chip")].forEach(ch => {
+      const isPreset = ch.dataset.key === key;
+      if (ch.dataset.key) ch.classList.toggle("active", isPreset);
+    });
   }
 
-  currentSet = 1;
-  isWork = true;
-  startCountdown(3, () => { // スタート前カウント
-    startVideo();
-    timeLeft = workTime;
-    timer = setInterval(() => {
-      if (!isPaused) {
-        timeLeft--;
-        updateDisplay();
-        if (timeLeft <= 0) {
-          if (isWork) {
-            isWork = false;
-            stopVideo();
-            timeLeft = restTime;
-          } else {
-            currentSet++;
-            if (currentSet > sets) {
-              clearInterval(timer);
-              countdownEl.textContent = '終了！お疲れさま！';
-              stopVideo();
-              return;
-            }
-            isWork = true;
-            startVideo();
-            timeLeft = workTime;
-          }
+  // ===== 状態（重複宣言なし）=====
+  let running=false, paused=false, mode="作業";
+  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
+  let selectedKey="tabata";
+
+  // ===== ビープ =====
+  const ENABLE_BEEP = true;
+  let audioCtx;
+  function beep(f=900,d=0.08,v=0.06){
+    if(!ENABLE_BEEP) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const osc=audioCtx.createOscillator(), g=audioCtx.createGain();
+      osc.type="sine"; osc.frequency.value=f; g.gain.value=v;
+      osc.connect(g).connect(audioCtx.destination); osc.start(); setTimeout(()=>osc.stop(), d*1000);
+    }catch(_){}
+  }
+
+  // ===== 保存/復元 =====
+  function save(){
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      key: selectedKey,
+      work: sec(elWork.value), rest: sec(elRest.value), rounds: sec(elRounds.value),
+      countIn: !!chkCountIn.checked
+    }));
+  }
+  function load(){
+    try{
+      const s = JSON.parse(localStorage.getItem(LS_KEY)||"{}");
+      if(s.key && PRESETS[s.key]) selectedKey = s.key;
+      if(typeof s.countIn === "boolean") chkCountIn.checked = s.countIn;
+      if(s.work && s.rest && s.rounds){
+        setInputs({work:s.work, rest:s.rest, rounds:s.rounds});
+      }else{
+        setInputs(PRESETS[selectedKey]); // 初回はタバタ
+      }
+      setActiveChip(selectedKey);
+    }catch(_){
+      setInputs(PRESETS[selectedKey]); setActiveChip(selectedKey);
+    }
+  }
+  load();
+  chkCountIn.addEventListener("change", save);
+
+  // ===== 初回ダイアログ =====
+  function showModal(){ modalBack.style.display = "flex"; }
+  function hideModal(){ modalBack.style.display = "none"; }
+  if (!localStorage.getItem(ONBOARDED_KEY)) { showModal(); }
+  modalBack.addEventListener("click", (e)=> { if (e.target === modalBack) { /* no close */ } });
+  openPreset.addEventListener("click", showModal);
+  modalChips.addEventListener("click", (e)=>{
+    const chip = e.target.closest(".chip"); if(!chip) return;
+    const key = chip.dataset.key; if(!key) return;
+    selectedKey = key; setInputs(PRESETS[key]); setActiveChip(key); save();
+    localStorage.setItem(ONBOARDED_KEY, "1");
+    hideModal();
+  });
+
+  // ===== 画面内プリセットクリック =====
+  chipWrap.addEventListener("click", (e)=>{
+    const chip = e.target.closest(".chip"); if(!chip) return;
+    const key = chip.dataset.key; if(!key) return; // count-inはdatasetなし
+    selectedKey = key; setInputs(PRESETS[key]); setActiveChip(key); save();
+  });
+
+  // ===== 入力編集で「カスタム」へ =====
+  function isNowCustom(){
+    const p = PRESETS[selectedKey] || PRESETS.tabata;
+    return (sec(elWork.value)!==p.work) || (sec(elRest.value)!==p.rest) || (sec(elRounds.value)!==p.rounds);
+  }
+  [elWork, elRest, elRounds].forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      if(!running){
+        elDisp.textContent = fmt(sec(elWork.value));
+        elTotal.textContent = sec(elRounds.value);
+      }else if (inp===elRounds){
+        elTotal.textContent = sec(elRounds.value);
+      }
+      if(isNowCustom()){ selectedKey="custom"; setActiveChip("custom"); }
+      save();
+    });
+  });
+
+  // ===== YouTubeプレイヤー連動 =====
+  let player = null;
+  window.onYouTubeIframeAPIReady = function(){
+    player = new YT.Player('workout-video', {
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+      events: { onReady: () => { /* ready */ } }
+    });
+  };
+  function startVideo(){
+    document.body.classList.add('video-open');     // 余白確保
+    videoContainer.style.display = 'block';
+    if (!player) return;
+    try { player.playVideo(); } catch(_) {}
+    // 音あり自動再生ブロック時のフォールバック
+    setTimeout(() => {
+      try{
+        if (player && player.getPlayerState && player.getPlayerState() !== 1) {
+          player.mute(); player.playVideo(); setTimeout(()=>player.unMute(), 400);
+        }
+      }catch(_){}
+    }, 200);
+  }
+  function stopVideo(){
+    try{ if (player && player.pauseVideo) player.pauseVideo(); }catch(_){}
+    videoContainer.style.display = 'none';
+    document.body.classList.remove('video-open');  // 余白解除
+  }
+
+  // ===== タイマー（performance.now基準で正確／一時停止修正） =====
+  function schedulePhase(seconds){ phaseEndAt = performance.now() + seconds*1000; lastShown=null; }
+  function currentPhaseSecs(){ return mode==="作業" ? sec(elWork.value) : sec(elRest.value); }
+
+  function loop(){
+    if(!running || paused){ rafId = requestAnimationFrame(loop); return; }
+    const now = performance.now();
+    let remain = Math.ceil((phaseEndAt - now)/1000);
+    if(remain < 0) remain = 0;
+
+    if(remain !== lastShown){
+      lastShown = remain;
+      elDisp.textContent = fmt(remain);
+      elPhase.textContent = `${mode}中`;
+      if(remain===10) beep(1000,0.1);
+      if(remain<=3 && remain>0) beep(900,0.08);
+    }
+
+    if(remain === 0){
+      beep(mode==="作業"?1200:700,0.12);
+      if(mode==="作業"){
+        mode="休憩";
+        stopVideo();
+        schedulePhase(currentPhaseSecs());
+        elPhase.textContent="休憩中";
+      }else{
+        roundsDone++; elCount.textContent = roundsDone;
+        if(roundsDone >= sec(elRounds.value)){
+          running=false; setButtons(false, true, false);
+          elPhase.textContent="完了！お疲れさま💪";
+          stopVideo();
+        }else{
+          mode="作業";
+          schedulePhase(currentPhaseSecs());
+          elPhase.textContent="作業中";
+          startVideo();
         }
       }
-    }, 1000);
-    updateDisplay();
-  });
-}
-
-function startCountdown(seconds, callback) {
-  let count = seconds;
-  countdownEl.textContent = count;
-  let cd = setInterval(() => {
-    count--;
-    countdownEl.textContent = count > 0 ? count : 'スタート！';
-    if (count <= 0) {
-      clearInterval(cd);
-      callback();
     }
-  }, 1000);
-}
+    rafId = requestAnimationFrame(loop);
+  }
 
-function updateDisplay() {
-  countdownEl.textContent = `${isWork ? '運動' : '休憩'}: ${timeLeft}秒 (セット${currentSet})`;
-}
+  // ===== スタート（3秒カウントイン対応） =====
+  async function start(){
+    if(running && !paused) return;
 
-function pauseTimer() {
-  isPaused = !isPaused;
-}
+    if(!running){
+      if (chkCountIn.checked){
+        setButtons(true,true,true);
+        for (let c=3; c>0; c--){
+          elPhase.textContent = "カウントイン";
+          elDisp.textContent = `00:0${c}`;
+          beep(800 + (3-c)*100,0.08);
+          await new Promise(r=>setTimeout(r,1000));
+        }
+      }
+      mode="作業"; roundsDone=0; elCount.textContent="0";
+      elTotal.textContent = sec(elRounds.value);
+      schedulePhase(sec(elWork.value));
+      startVideo();
+    } else if (paused){
+      phaseEndAt = performance.now() + pausedRemainMs;
+      if (mode === "作業") startVideo(); else stopVideo();
+    }
 
-function resetTimer() {
-  clearInterval(timer);
-  countdownEl.textContent = '準備OK?';
-  isPaused = false;
-  stopVideo();
-}
+    running=true; paused=false;
+    elPhase.textContent = `${mode}中`;
+    setButtons(true, false, false);
+    if(!rafId) rafId = requestAnimationFrame(loop);
+    beep(1000,0.08);
+  }
 
-function startVideo(){
-  document.body.classList.add('video-open');
-  videoContainer.style.display = 'block';
-  player.playVideo();
-}
+  function togglePause(){
+    if(!running) return;
+    paused = !paused;
+    btnPause.textContent = paused ? "再開" : "一時停止";
+    if (paused) {
+      pausedRemainMs = Math.max(0, phaseEndAt - performance.now());
+      elPhase.textContent = "一時停止中";
+      stopVideo();
+    } else {
+      phaseEndAt = performance.now() + pausedRemainMs;
+      elPhase.textContent = `${mode}中`;
+      if (mode === "作業") startVideo();
+    }
+  }
 
-function stopVideo(){
-  document.body.classList.remove('video-open');
-  videoContainer.style.display = 'none';
-  player.pauseVideo();
-}
+  function reset(){
+    running=false; paused=false; cancelAnimationFrame(rafId); rafId=null;
+    mode="作業"; roundsDone=0; lastShown=null; pausedRemainMs=0;
+    elCount.textContent="0"; elTotal.textContent = sec(elRounds.value);
+    elDisp.textContent = fmt(sec(elWork.value));
+    elPhase.textContent="待機中";
+    btnPause.textContent="一時停止";
+    setButtons(false, true, true);
+    stopVideo();
+  }
 
-// YouTube API
-let tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-document.body.appendChild(tag);
+  // ボタン
+  btnStart.addEventListener("click", start);
+  btnPause.addEventListener("click", togglePause);
+  btnReset.addEventListener("click", reset);
 
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player('ytplayer', {
-    videoId: 'cZRENUODbvw',
-    playerVars: { autoplay: 0, controls: 0 },
-    events: {}
-  });
-}
+  // 初期ボタン状態
+  setButtons(false, true, true);
+})();
 </script>
-
 </body>
 </html>

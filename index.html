@@ -9,14 +9,10 @@
   @media (prefers-color-scheme: dark){
     :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e; --shadow:0 8px 28px rgba(0,0,0,.24) }
   }
-  /* スマホで動画を少し低く */
-  @media (max-width: 420px){
-    :root { --video-h: 160px; }
-  }
+  @media (max-width: 420px){ :root { --video-h: 160px; } }
 
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif;transition:padding-bottom .2s ease}
-  /* 動画が出たら下に余白を自動確保（数字が隠れない） */
   body.video-open{ padding-bottom: calc(var(--video-h) + env(safe-area-inset-bottom)); }
 
   .wrap{max-width:620px;margin:0 auto;padding:16px}
@@ -43,14 +39,12 @@
   .pause{background:#ffd60a}
   .reset{background:#e5e5ea}
 
-  /* 初回ダイアログ */
   .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
   .modal{background:var(--card);color:var(--fg);border-radius:16px;box-shadow:var(--shadow);max-width:520px;width:100%;padding:16px}
   .modal h2{margin:0 0 10px;font-size:18px}
   .modal p{margin:0 0 12px;color:var(--muted);font-size:14px}
   .modal .chips{margin:6px 0 0}
 
-  /* 画面下の動画コンテナ（固定） */
   #video-container{
     position:fixed; left:0; right:0; bottom:0;
     height:var(--video-h); background:#000; display:none; z-index:5;
@@ -67,7 +61,6 @@
       <span id="openPreset" class="link">⚙︎プリセット変更</span>
     </div>
 
-    <!-- プリセット -->
     <div class="chips" id="chips">
       <span class="chip" data-key="tabata">タバタ(20/10×8)</span>
       <span class="chip" data-key="diet">ダイエット(40/20×10)</span>
@@ -80,18 +73,15 @@
       </label>
     </div>
 
-    <!-- 入力 -->
     <div class="grid">
       <div><label for="work">作業(秒)</label><input id="work" type="number" min="1"></div>
       <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1"></div>
       <div><label for="rounds">回数</label><input id="rounds" type="number" min="1"></div>
     </div>
 
-    <!-- 表示 -->
     <div class="big" id="display">00:20</div>
     <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
 
-    <!-- 操作 -->
     <div class="row">
       <button class="start" id="btnStart">スタート</button>
       <button class="pause" id="btnPause" disabled>一時停止</button>
@@ -100,7 +90,6 @@
   </div>
 </div>
 
-<!-- 初回プリセットダイアログ -->
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <h2>目的を選んでください</h2>
@@ -115,19 +104,15 @@
   </div>
 </div>
 
-<!-- 画面下の動画（YouTube IFrame） -->
 <div id="video-container">
   <iframe id="workout-video"
     src="https://www.youtube.com/embed/cZRENUODbvw?enablejsapi=1&rel=0&modestbranding=1&playsinline=1"
     title="Workout Video" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
 </div>
 
-<!-- YouTube IFrame API -->
 <script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
 (() => {
-  // ===== 要素参照 =====
   const $ = id => document.getElementById(id);
   const elWork=$("work"), elRest=$("rest"), elRounds=$("rounds");
   const elDisp=$("display"), elPhase=$("phase"), elCount=$("count"), elTotal=$("total");
@@ -139,7 +124,6 @@
   const chkCountIn = document.getElementById("countIn");
   const videoContainer = document.getElementById("video-container");
 
-  // ===== プリセット =====
   const PRESETS = {
     tabata:   { name:"タバタ",     work:20, rest:10, rounds:8 },
     diet:     { name:"ダイエット", work:40, rest:20, rounds:10 },
@@ -148,10 +132,9 @@
     core:     { name:"コア集中",   work:30, rest:15, rounds:10 },
     custom:   { name:"カスタム",   work:20, rest:10, rounds:8 },
   };
-  const LS_KEY = "mdt-settings-v6"; // v6: 余白自動確保
+  const LS_KEY = "mdt-settings-v6";
   const ONBOARDED_KEY = "mdt-onboarded";
 
-  // ===== 便利関数 =====
   function sec(v){ return Math.max(1, (+v|0)); }
   const pad = n => String(n).padStart(2,"0");
   const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
@@ -170,12 +153,12 @@
     });
   }
 
-  // ===== 状態（タイマー）=====
+  // ==== 状態（重複宣言なし！） ====
   let running=false, paused=false, mode="作業";
   let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
   let selectedKey="tabata";
 
-  // ===== ビープ =====
+  // ==== ビープ ====
   const ENABLE_BEEP = true;
   let audioCtx;
   function beep(f=900,d=0.08,v=0.06){
@@ -188,7 +171,7 @@
     }catch(_){}
   }
 
-  // ===== 保存/復元 =====
+  // ==== 保存/復元 ====
   function save(){
     localStorage.setItem(LS_KEY, JSON.stringify({
       key: selectedKey,
@@ -214,13 +197,12 @@
   load();
   chkCountIn.addEventListener("change", save);
 
-  // ===== 初回ダイアログ =====
+  // ==== 初回ダイアログ ====
   function showModal(){ modalBack.style.display = "flex"; }
   function hideModal(){ modalBack.style.display = "none"; }
   if (!localStorage.getItem(ONBOARDED_KEY)) { showModal(); }
   modalBack.addEventListener("click", (e)=> { if (e.target === modalBack) { /* no close */ } });
   openPreset.addEventListener("click", showModal);
-
   modalChips.addEventListener("click", (e)=>{
     const chip = e.target.closest(".chip"); if(!chip) return;
     const key = chip.dataset.key; if(!key) return;
@@ -229,14 +211,14 @@
     hideModal();
   });
 
-  // ===== 画面内プリセットクリック =====
+  // ==== 画面内プリセットクリック ====
   chipWrap.addEventListener("click", (e)=>{
     const chip = e.target.closest(".chip"); if(!chip) return;
     const key = chip.dataset.key; if(!key) return; // count-inはdatasetなし
     selectedKey = key; setInputs(PRESETS[key]); setActiveChip(key); save();
   });
 
-  // ===== 入力編集で「カスタム」へ =====
+  // ==== 入力編集でカスタムへ ====
   function isNowCustom(){
     const p = PRESETS[selectedKey] || PRESETS.tabata;
     return (sec(elWork.value)!==p.work) || (sec(elRest.value)!==p.rest) || (sec(elRounds.value)!==p.rounds);
@@ -246,15 +228,15 @@
       if(!running){
         elDisp.textContent = fmt(sec(elWork.value));
         elTotal.textContent = sec(elRounds.value);
-      }else{
-        if(inp===elRounds) elTotal.textContent = sec(elRounds.value);
+      }else if (inp===elRounds){
+        elTotal.textContent = sec(elRounds.value);
       }
       if(isNowCustom()){ selectedKey="custom"; setActiveChip("custom"); }
       save();
     });
   });
 
-  // ===== YouTubeプレイヤー連動 =====
+  // ==== YouTube IFrame API ====
   let player = null;
   window.onYouTubeIframeAPIReady = function(){
     player = new YT.Player('workout-video', {
@@ -263,12 +245,10 @@
     });
   };
   function startVideo(){
-    // 余白確保 & 表示
     document.body.classList.add('video-open');
     videoContainer.style.display = 'block';
     if (!player) return;
     try { player.playVideo(); } catch(_) {}
-    // 音あり自動再生がブロックされた場合のフォールバック
     setTimeout(() => {
       try{
         if (player && player.getPlayerState && player.getPlayerState() !== 1) {
@@ -280,13 +260,10 @@
   function stopVideo(){
     try{ if (player && player.pauseVideo) player.pauseVideo(); }catch(_){}
     videoContainer.style.display = 'none';
-    document.body.classList.remove('video-open'); // 余白解除
+    document.body.classList.remove('video-open');
   }
 
-  // ===== タイマー（正確カウント＋一時停止修正）=====
-  let running=false, paused=false, mode="作業";
-  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
-
+  // ==== タイマー ====
   function schedulePhase(seconds){ phaseEndAt = performance.now() + seconds*1000; lastShown=null; }
   function currentPhaseSecs(){ return mode==="作業" ? sec(elWork.value) : sec(elRest.value); }
 
@@ -308,7 +285,7 @@
       beep(mode==="作業"?1200:700,0.12);
       if(mode==="作業"){
         mode="休憩";
-        stopVideo();                              // 休憩で動画停止
+        stopVideo();
         schedulePhase(currentPhaseSecs());
         elPhase.textContent="休憩中";
       }else{
@@ -316,19 +293,19 @@
         if(roundsDone >= sec(elRounds.value)){
           running=false; setButtons(false, true, false);
           elPhase.textContent="完了！お疲れさま💪";
-          stopVideo();                            // 完了も停止
+          stopVideo();
         }else{
           mode="作業";
           schedulePhase(currentPhaseSecs());
           elPhase.textContent="作業中";
-          startVideo();                           // 次セットで再生
+          startVideo();
         }
       }
     }
     rafId = requestAnimationFrame(loop);
   }
 
-  // === カウントイン付きスタート ===
+  // ==== スタート（カウントイン対応） ====
   async function start(){
     if(running && !paused) return;
 
@@ -345,7 +322,7 @@
       mode="作業"; roundsDone=0; elCount.textContent="0";
       elTotal.textContent = sec(elRounds.value);
       schedulePhase(sec(elWork.value));
-      startVideo(); // 作業開始で再生
+      startVideo();
     } else if (paused){
       phaseEndAt = performance.now() + pausedRemainMs;
       if (mode === "作業") startVideo(); else stopVideo();
@@ -365,7 +342,7 @@
     if (paused) {
       pausedRemainMs = Math.max(0, phaseEndAt - performance.now());
       elPhase.textContent = "一時停止中";
-      stopVideo(); // 一時停止時も止める
+      stopVideo();
     } else {
       phaseEndAt = performance.now() + pausedRemainMs;
       elPhase.textContent = `${mode}中`;
@@ -381,15 +358,12 @@
     elPhase.textContent="待機中";
     btnPause.textContent="一時停止";
     setButtons(false, true, true);
-    stopVideo(); // リセット時も停止＆余白解除
+    stopVideo();
   }
 
-  // ボタン
   btnStart.addEventListener("click", start);
   btnPause.addEventListener("click", togglePause);
   btnReset.addEventListener("click", reset);
-
-  // 初期ボタン状態
   setButtons(false, true, true);
 })();
 </script>

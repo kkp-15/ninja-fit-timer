@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>筋トレ＆ダイエットタイマー｜ハンズフリー対応インターバル</title>
+
+  <!-- SEO -->
+  <meta name="description" content="筋トレ・HIIT・有酸素運動に使える『筋トレ＆ダイエットタイマー』。ハンズフリー操作、音声ガイド、スリープ防止で“痩せるトレ”を楽に継続。" />
+  <meta name="keywords" content="インターバル,筋トレ,ダイエット,HIIT,有酸素,タイマー,ハンズフリー,脂肪燃焼" />
+
+  <!-- OGP -->
+  <meta property="og:title" content="筋トレ＆ダイエットタイマー｜ハンズフリー対応インターバル" />
+  <meta property="og:description" content="筋トレ/ダイエット/HIIT対応。音声操作・スワイプ操作・スリープ防止対応のインターバルタイマー。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://fit.kkpwebninja.com/" />
+  <meta property="og:image" content="https://fit.kkpwebninja.com/image/card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://fit.kkpwebninja.com/" />
+  <link rel="icon" href="favicon.ico" />
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2LM85GJN0L"></script>
+  <script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-2LM85GJN0L');</script>
+
+  <style>
+    :root{--fg:#111;--muted:#666;--accent:#0a84ff;--bg:#fff;--card:#f6f7f8}
+    @media (prefers-color-scheme: dark){:root{--fg:#eee;--muted:#aaa;--accent:#4da3ff;--bg:#121212;--card:#1e1e1e}}
+    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;margin:0;background:var(--bg);color:var(--fg);min-height:100dvh;display:grid;place-items:center;padding:16px}
+    .app{width:min(680px,100%);background:var(--card);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden}
+    header,footer{padding:12px 16px}header h1{margin:0;font-size:20px}header p{margin:6px 0 0;color:var(--muted);font-size:13px}
+    main{padding:16px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input{width:100%;padding:12px 10px;font-size:18px;border-radius:12px;background:#fff0;color:var(--fg);border:1px solid #0000;outline:1px solid #0003}
+    .big{font-size:80px;font-weight:800;text-align:center;margin:8px 0}.phase{font-size:14px;color:var(--muted);text-align:center;margin-top:-6px}
+    .rounds{font-size:14px;text-align:center;margin:8px 0 14px}.row{display:flex;gap:10px;justify-content:center;margin:10px 0 4px}
+    button{flex:1;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;border:none}
+    .start{background:var(--accent);color:#fff}.pause{background:#ffd60a}.reset{background:#e5e5ea}.secondary{background:#dfe2e6}
+    .switches{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;background:#e9ecef;font-size:14px}
+    .chip input{width:auto;accent-color:var(--accent)}.tapzone{margin-top:10px;border-radius:16px;border:2px dashed #0003;padding:14px;text-align:center;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}footer{font-size:12px;color:var(--muted);text-align:center}
+    .locked input{pointer-events:none;opacity:.6}#footerLinks{margin-top:10px;text-align:center;font-size:12px}#footerLinks a{color:inherit}
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <h1>筋トレ＆ダイエットタイマー</h1>
+      <p>ハンズフリー操作 × 音声ガイド × スリープ防止（HIIT/有酸素/筋トレ対応）</p>
+    </header>
+
+    <main id="touchArea">
+      <div class="grid">
+        <div><label for="work">作業(秒)</label><input id="work" type="number" min="1" value="30" /></div>
+        <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1" value="15" /></div>
+        <div><label for="rounds">回数</label><input id="rounds" type="number" min="1" value="8" /></div>
+      </div>
+
+      <div class="switches">
+        <label class="chip"><input type="checkbox" id="countIn" checked /> カウントイン</label>
+        <label class="chip"><input type="checkbox" id="voiceGuide" checked /> 音声ガイド</label>
+        <label class="chip"><input type="checkbox" id="lockUI" /> 設定ロック</label>
+        <button class="secondary" id="btnVoice">音声ON</button>
+      </div>
+
+      <div class="big" id="display">00:30</div>
+      <div class="phase" id="phase">待機中（タップで開始）</div>
+      <div class="rounds"><span id="count">0</span>/<span id="total">8</span> ラウンド</div>
+
+      <div class="row">
+        <button class="start" id="btnStart">スタート</button>
+        <button class="pause" id="btnPause" disabled>一時停止</button>
+        <button class="reset" id="btnReset" disabled>リセット</button>
+      </div>
+
+      <div class="tapzone">画面タップ＝開始/一時停止｜スワイプ右＝次へ｜スワイプ左＝まえへ</div>
+      <div class="hint">音声コマンド例：「スタート / ポーズ / リセット / 次へ / まえ / 残り時間」</div>
+    </main>
+
+    <footer>
+      スリープ防止・音声は最初の操作後に有効化されます。
+      <div id="footerLinks">
+        X <a href="https://x.com/kkp_webninja" target="_blank">@kkp_webninja</a><br>
+        🏯 <a href="https://kkpwebninja.com" target="_blank">web忍者の本丸</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+// JavaScript フルコードをここに記述する（この後続けて送信します）
+// 分量が非常に多いため、1つの送信で収まらない場合は分割して送ります
+  </script>
+</body>
+</html>

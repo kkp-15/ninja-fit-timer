@@ -3,17 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>筋トレ＆ダイエットタイマー（超シンプル）</title>
+<title>筋トレ＆ダイエットタイマー（初回プリセット選択）</title>
 <style>
-  :root { --fg:#111; --bg:#fff; --muted:#666; --accent:#0a84ff; --card:#f6f7f8 }
+  :root { --fg:#111; --bg:#fff; --muted:#666; --accent:#0a84ff; --card:#f6f7f8; --shadow:0 6px 20px rgba(0,0,0,.08) }
   @media (prefers-color-scheme: dark){
-    :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e }
+    :root { --fg:#eee; --bg:#121212; --muted:#aaa; --accent:#4da3ff; --card:#1e1e1e; --shadow:0 8px 28px rgba(0,0,0,.24) }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif}
-  .wrap{max-width:560px;margin:0 auto;padding:16px}
-  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .wrap{max-width:620px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
   h1{margin:0 0 12px;font-size:18px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .link{font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid #0000;outline:1px solid #0003;cursor:pointer;font-size:14px;background:#ffffff10}
+  .chip.active{background:var(--accent);color:#fff;outline-color:transparent}
+  .chip.small{font-size:12px;opacity:.85}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   label{display:block;font-size:12px;color:var(--muted);margin:4px 0}
   input{width:100%;padding:10px;border-radius:12px;border:1px solid #0000;outline:1px solid #0003;background:#ffffff08;color:var(--fg);font-size:18px}
@@ -24,22 +30,42 @@
   .start{background:var(--accent);color:#fff}
   .pause{background:#ffd60a}
   .reset{background:#e5e5ea}
+
+  /* 初回ダイアログ */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .modal{background:var(--card);color:var(--fg);border-radius:16px;box-shadow:var(--shadow);max-width:520px;width:100%;padding:16px}
+  .modal h2{margin:0 0 10px;font-size:18px}
+  .modal p{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .modal .chips{margin:6px 0 0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>筋トレ＆ダイエットタイマー</h1>
+    <div class="topbar">
+      <h1>筋トレ＆ダイエットタイマー</h1>
+      <span id="openPreset" class="link">⚙︎プリセット変更</span>
+    </div>
+
+    <!-- プリセット（画面内でも選べる） -->
+    <div class="chips" id="chips">
+      <span class="chip" data-key="tabata">タバタ(20/10×8)</span>
+      <span class="chip" data-key="diet">ダイエット(40/20×10)</span>
+      <span class="chip" data-key="strength">筋トレ(45/15×10)</span>
+      <span class="chip" data-key="beginner">初心者(30/30×6)</span>
+      <span class="chip" data-key="core">コア集中(30/15×10)</span>
+      <span class="chip small" data-key="custom">カスタム</span>
+    </div>
 
     <!-- 入力：作業/休憩/回数 -->
     <div class="grid">
-      <div><label for="work">作業(秒)</label><input id="work" type="number" min="1" value="30"></div>
-      <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1" value="15"></div>
-      <div><label for="rounds">回数</label><input id="rounds" type="number" min="1" value="8"></div>
+      <div><label for="work">作業(秒)</label><input id="work" type="number" min="1"></div>
+      <div><label for="rest">休憩(秒)</label><input id="rest" type="number" min="1"></div>
+      <div><label for="rounds">回数</label><input id="rounds" type="number" min="1"></div>
     </div>
 
     <!-- 大きいカウントダウン -->
-    <div class="big" id="display">00:30</div>
+    <div class="big" id="display">00:20</div>
     <div class="sub"><span id="phase">待機中</span> / <span id="count">0</span>/<span id="total">8</span> ラウンド</div>
 
     <!-- 操作ボタン -->
@@ -51,6 +77,21 @@
   </div>
 </div>
 
+<!-- 初回プリセットダイアログ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h2>目的を選んでください</h2>
+    <p>選ぶだけで秒数と回数が自動でセットされます（次回以降はスキップされます）。</p>
+    <div class="chips" id="modalChips">
+      <span class="chip" data-key="tabata">タバタ(20/10×8)</span>
+      <span class="chip" data-key="diet">ダイエット(40/20×10)</span>
+      <span class="chip" data-key="strength">筋トレ(45/15×10)</span>
+      <span class="chip" data-key="beginner">初心者(30/30×6)</span>
+      <span class="chip" data-key="core">コア集中(30/15×10)</span>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   // ===== 要素参照 =====
@@ -58,18 +99,45 @@
   const elWork=$("work"), elRest=$("rest"), elRounds=$("rounds");
   const elDisp=$("display"), elPhase=$("phase"), elCount=$("count"), elTotal=$("total");
   const btnStart=$("btnStart"), btnPause=$("btnPause"), btnReset=$("btnReset");
+  const chipWrap = document.getElementById("chips");
+  const openPreset = document.getElementById("openPreset");
+  const modalBack = document.getElementById("modalBack");
+  const modalChips = document.getElementById("modalChips");
 
-  // ===== 状態 =====
-  let running=false;           // タイマー稼働中か
-  let paused=false;            // 一時停止中か
-  let mode="作業";             // "作業" or "休憩"
-  let roundsDone=0;            // 終了したセット数
-  let phaseEndAt=0;            // 現フェーズの終了予定時刻（ms, performance.now基準）
-  let lastShown=null;          // 直近に描画した残り秒
-  let rafId=null;              // requestAnimationFrame ID
-  let pausedRemainMs=0;        // 一時停止で保持する残り時間(ms)
+  // ===== プリセット定義 =====
+  const PRESETS = {
+    tabata:   { name:"タバタ",     work:20, rest:10, rounds:8 },
+    diet:     { name:"ダイエット", work:40, rest:20, rounds:10 },
+    strength: { name:"筋トレ",     work:45, rest:15, rounds:10 },
+    beginner: { name:"初心者",     work:30, rest:30, rounds:6 },
+    core:     { name:"コア集中",   work:30, rest:15, rounds:10 },
+    custom:   { name:"カスタム",   work:20, rest:10, rounds:8 },
+  };
+  const LS_KEY = "mdt-settings-v3"; // v3: 初回ダイアログ対応
+  const ONBOARDED_KEY = "mdt-onboarded";
 
-  // ===== 短いビープ =====
+  // ===== 便利関数 =====
+  function sec(v){ return Math.max(1, (+v|0)); }
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
+  function setButtons(disStart, disPause, disReset){
+    btnStart.disabled = disStart; btnPause.disabled = disPause; btnReset.disabled = disReset;
+  }
+  function setInputs({work,rest,rounds}){
+    elWork.value = work; elRest.value = rest; elRounds.value = rounds;
+    elTotal.textContent = rounds;
+    if(!running) elDisp.textContent = fmt(work);
+  }
+  function setActiveChip(key){
+    [...chipWrap.querySelectorAll(".chip")].forEach(ch => ch.classList.toggle("active", ch.dataset.key===key));
+  }
+
+  // ===== 状態（タイマー）=====
+  let running=false, paused=false, mode="作業";
+  let roundsDone=0, phaseEndAt=0, lastShown=null, rafId=null, pausedRemainMs=0;
+  let selectedKey="tabata";
+
+  // ===== ビープ =====
   const ENABLE_BEEP = true;
   let audioCtx;
   function beep(f=900,d=0.08,v=0.06){
@@ -78,89 +146,123 @@
       audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
       const osc=audioCtx.createOscillator(), g=audioCtx.createGain();
       osc.type="sine"; osc.frequency.value=f; g.gain.value=v;
-      osc.connect(g).connect(audioCtx.destination);
-      osc.start(); setTimeout(()=>osc.stop(), d*1000);
+      osc.connect(g).connect(audioCtx.destination); osc.start(); setTimeout(()=>osc.stop(), d*1000);
     }catch(_){}
   }
 
-  // ===== ユーティリティ =====
-  const pad = n => String(n).padStart(2,"0");
-  const fmt = s => `${pad(Math.floor(s/60))}:${pad(s%60)}`;
-  const sec = v => Math.max(1, (+v|0) );                 // 1秒未満にならないよう丸め
-  const currentPhaseSecs = () => mode==="作業" ? sec(elWork.value) : sec(elRest.value);
-  const schedulePhase = seconds => { phaseEndAt = performance.now() + seconds*1000; lastShown=null; };
-
-  function setButtons(disStart, disPause, disReset){
-    btnStart.disabled = disStart; btnPause.disabled = disPause; btnReset.disabled = disReset;
+  // ===== 保存/復元 =====
+  function save(){
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      key: selectedKey,
+      work: sec(elWork.value), rest: sec(elRest.value), rounds: sec(elRounds.value)
+    }));
   }
+  function load(){
+    try{
+      const s = JSON.parse(localStorage.getItem(LS_KEY)||"{}");
+      if(s.key && PRESETS[s.key]) selectedKey = s.key;
+      if(s.work && s.rest && s.rounds){
+        setInputs({work:s.work, rest:s.rest, rounds:s.rounds});
+      }else{
+        // デフォはタバタ
+        setInputs(PRESETS[selectedKey]);
+      }
+      setActiveChip(selectedKey);
+    }catch(_){
+      setInputs(PRESETS[selectedKey]); setActiveChip(selectedKey);
+    }
+  }
+  load();
 
-  // ===== 入力変更時の反映（待機中のみ完全反映） =====
+  // ===== 初回ダイアログ表示制御 =====
+  function showModal(){ modalBack.style.display = "flex"; }
+  function hideModal(){ modalBack.style.display = "none"; }
+  if (!localStorage.getItem(ONBOARDED_KEY)) {
+    showModal();
+  }
+  // 背景クリックで閉じないように（誤操作防止）
+  modalBack.addEventListener("click", (e)=> {
+    if (e.target === modalBack) { /* no close */ }
+  });
+  // プリセット変更ボタンで手動オープン
+  openPreset.addEventListener("click", showModal);
+
+  // ===== ダイアログ内の選択 =====
+  modalChips.addEventListener("click", (e)=>{
+    const chip = e.target.closest(".chip"); if(!chip) return;
+    const key = chip.dataset.key; if(!key) return;
+    selectedKey = key; setInputs(PRESETS[key]); setActiveChip(key); save();
+    localStorage.setItem(ONBOARDED_KEY, "1");
+    hideModal();
+  });
+
+  // ===== 画面内プリセットクリック =====
+  chipWrap.addEventListener("click", (e)=>{
+    const chip = e.target.closest(".chip"); if(!chip) return;
+    const key = chip.dataset.key; if(!key) return;
+    selectedKey = key; setInputs(PRESETS[key]); setActiveChip(key); save();
+  });
+
+  // ===== 入力編集で「カスタム」へ =====
+  function isNowCustom(){
+    const p = PRESETS[selectedKey] || PRESETS.tabata;
+    return (sec(elWork.value)!==p.work) || (sec(elRest.value)!==p.rest) || (sec(elRounds.value)!==p.rounds);
+  }
   [elWork, elRest, elRounds].forEach(inp=>{
     inp.addEventListener("change", ()=>{
       if(!running){
         elDisp.textContent = fmt(sec(elWork.value));
         elTotal.textContent = sec(elRounds.value);
       }else{
-        // 稼働中は回数だけ反映（現在のフェーズ長を動的に変えるとズレるため）
         if(inp===elRounds) elTotal.textContent = sec(elRounds.value);
       }
+      if(isNowCustom()){ selectedKey="custom"; setActiveChip("custom"); }
+      save();
     });
   });
 
-  // ===== 精密カウントダウンループ（壁時計基準） =====
-  function loop(){
-    // 停止 or 一時停止中は進めない（描画だけ回す）
-    if(!running || paused){
-      rafId = requestAnimationFrame(loop);
-      return;
-    }
+  // ===== タイマー本体（正確カウント＋一時停止修正）=====
+  function schedulePhase(seconds){ phaseEndAt = performance.now() + seconds*1000; lastShown=null; }
+  function currentPhaseSecs(){ return mode==="作業" ? sec(elWork.value) : sec(elRest.value); }
 
+  function loop(){
+    if(!running || paused){ rafId = requestAnimationFrame(loop); return; }
     const now = performance.now();
-    let remain = Math.ceil((phaseEndAt - now)/1000); // 秒単位に丸め
+    let remain = Math.ceil((phaseEndAt - now)/1000);
     if(remain < 0) remain = 0;
 
     if(remain !== lastShown){
       lastShown = remain;
       elDisp.textContent = fmt(remain);
       elPhase.textContent = `${mode}中`;
-      // 簡易ビープ（10秒・終盤3,2,1）
       if(remain===10) beep(1000,0.1);
       if(remain<=3 && remain>0) beep(900,0.08);
     }
 
     if(remain === 0){
-      // フェーズ終了：切替して次の終了時刻を予約
       beep(mode==="作業"?1200:700,0.12);
       if(mode==="作業"){
-        mode="休憩";
-        schedulePhase(currentPhaseSecs());
-        elPhase.textContent = "休憩中";
+        mode="休憩"; schedulePhase(currentPhaseSecs()); elPhase.textContent="休憩中";
       }else{
         roundsDone++; elCount.textContent = roundsDone;
         if(roundsDone >= sec(elRounds.value)){
-          // 全セット完了
           running=false; setButtons(false, true, false);
           elPhase.textContent="完了！お疲れさま💪";
         }else{
-          mode="作業";
-          schedulePhase(currentPhaseSecs());
-          elPhase.textContent = "作業中";
+          mode="作業"; schedulePhase(currentPhaseSecs()); elPhase.textContent="作業中";
         }
       }
     }
     rafId = requestAnimationFrame(loop);
   }
 
-  // ===== 開始/再開 =====
   function start(){
-    if(running && !paused) return; // 既に走行中
+    if(running && !paused) return;
     if(!running){
-      mode="作業";
-      roundsDone=0; elCount.textContent="0";
+      mode="作業"; roundsDone=0; elCount.textContent="0";
       elTotal.textContent = sec(elRounds.value);
       schedulePhase(sec(elWork.value));
     }else if(paused){
-      // 再開：一時停止時に保存した残り時間で再スケジュール
       phaseEndAt = performance.now() + pausedRemainMs;
     }
     running=true; paused=false;
@@ -170,27 +272,21 @@
     beep(1000,0.08);
   }
 
-  // ===== 一時停止/再開トグル（修正版） =====
   function togglePause(){
     if(!running) return;
     paused = !paused;
     btnPause.textContent = paused ? "再開" : "一時停止";
-
     if (paused) {
-      // 現時点の残りミリ秒を固定して保存（ループは止める）
       pausedRemainMs = Math.max(0, phaseEndAt - performance.now());
       elPhase.textContent = "一時停止中";
     } else {
-      // 再開：今から pausedRemainMs 先を新たな終了時刻に
       phaseEndAt = performance.now() + pausedRemainMs;
       elPhase.textContent = `${mode}中`;
     }
   }
 
-  // ===== リセット =====
   function reset(){
-    running=false; paused=false;
-    cancelAnimationFrame(rafId); rafId=null;
+    running=false; paused=false; cancelAnimationFrame(rafId); rafId=null;
     mode="作業"; roundsDone=0; lastShown=null; pausedRemainMs=0;
     elCount.textContent="0"; elTotal.textContent = sec(elRounds.value);
     elDisp.textContent = fmt(sec(elWork.value));
@@ -199,14 +295,13 @@
     setButtons(false, true, true);
   }
 
-  // ===== ボタンイベント =====
+  // ボタン
   btnStart.addEventListener("click", start);
   btnPause.addEventListener("click", togglePause);
   btnReset.addEventListener("click", reset);
 
-  // ===== 初期表示 =====
-  elDisp.textContent = fmt(sec(elWork.value));
-  elTotal.textContent = sec(elRounds.value);
+  // 初期ボタン状態
+  setButtons(false, true, true);
 })();
 </script>
 </body>
